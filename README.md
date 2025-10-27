@@ -72,7 +72,7 @@ Copy code
 ```bash
 git clone https://github.com/yourusername/AI-Medical-Image-Analysis.git
 cd AI-Medical-Image-Analysis
-Step 2. Create a Virtual Environment
+**### Step 2. Create a Virtual Environment**
 bash
 Copy code
 python -m venv venv
