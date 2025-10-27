@@ -65,27 +65,29 @@ yaml
 Copy code
 
 ---
-
 ## ⚙️ Installation
 
-### Step 1. Clone this Repository
+### 🧩 Step 1. Clone this Repository
 ```bash
 git clone https://github.com/yourusername/AI-Medical-Image-Analysis.git
 cd AI-Medical-Image-Analysis
-**### Step 2. Create a Virtual Environment**
-bash
-Copy code
-python -m venv venv
-source venv/bin/activate       # Linux/Mac
-venv\Scripts\activate          # Windows
-Step 3. Install Dependencies
-bash
-Copy code
-pip install -r requirements.txt
-requirements.txt
 
-nginx
-Copy code
+### 🧱 Step 2. Create a Virtual Environment
+
+To keep dependencies organized and avoid version conflicts, create and activate a virtual environment.
+
+```bash
+python -m venv venv
+source venv/bin/activate
+venv\Scripts\activate
+
+### 📦 Step 3. Install Dependencies
+
+After activating your virtual environment, install all required dependencies listed in `requirements.txt`.
+
+```bash
+pip install -r requirements.txt
+🧾 requirements.txt
 torch
 torchvision
 gradio
@@ -99,11 +101,12 @@ matplotlib
 tqdm
 pandas
 seaborn
-🧠 Dataset Preparation
+
+## 🧠 Dataset Preparation
+
 Organize your dataset as follows:
 
-bash
-Copy code
+```bash
 dataset/
 ├── train/
 │   ├── Normal/
@@ -114,68 +117,55 @@ dataset/
 │   ├── ...
 └── test/
     ├── ...
-Each folder should contain corresponding labeled images (e.g., X-rays in .jpg, .jpeg, .png).
+## 🏋️‍♂️ Model Training
 
-🏋️‍♂️ Model Training
-To train your own model:
+To train your own model, run the following command:
 
-bash
-Copy code
+```bash
 python train_model.py
-Key steps:
 
-Loads dataset and applies preprocessing
 
-Initializes ResNet18 model
 
-Trains with CrossEntropyLoss
 
-Saves the best-performing model as best_model.pth
 
-📊 Model Evaluation (Accuracy & Metrics)
-To evaluate model performance:
+## 📊 Model Evaluation (Accuracy & Metrics)
 
-bash
-Copy code
+To evaluate the model's performance on the test dataset, run:
+
+```bash
 python evaluate_accuracy.py
-Example output:
+Accuracy: 99.5%
+Precision: 0.99
+Recall: 0.99
+F1 Score: 0.995
 
-yaml
-Copy code
-Accuracy: 92.5%
-Precision: 0.91
-Recall: 0.92
-F1 Score: 0.915
-This script also:
 
-Generates a confusion matrix
 
-Saves a classification report
+## 🔍 Grad-CAM Explainability
 
-🔍 Grad-CAM Explainability
-Grad-CAM provides visual interpretability by highlighting which regions influenced the model’s decision.
+**Grad-CAM (Gradient-weighted Class Activation Mapping)** provides **visual interpretability** by highlighting which regions of the medical image influenced the model’s prediction the most.
 
-How it works:
+### ⚙️ How It Works
+1. Extracts gradients from the final convolution layer  
+2. Computes importance weights based on gradient flow  
+3. Generates a color heatmap overlay on the original image  
 
-Extracts gradients from final convolution layer
+🟥 **Red areas** on the heatmap indicate regions that contributed most strongly to the prediction.
 
-Computes importance weights
+> 💡 **Why it matters:**  
+> Grad-CAM helps build trust and transparency in AI models by showing *why* a particular diagnosis was made.
 
-Generates a color heatmap overlay
+---
 
-The red areas show the most critical regions for the model’s prediction.
+## 💻 Gradio Web App
 
-💻 Gradio Web App
 Launch the AI-powered medical image analysis app:
 
-bash
-Copy code
-python ui_app.py
-or in Google Colab:
 
-python
-Copy code
+python ui_app.py
+
 !python ui_app.py
+
 Then open the Gradio URL (e.g., https://xxxx.gradio.live) to use the interface.
 
 App Functionality:
@@ -203,8 +193,6 @@ For developers who want to use REST API:
 
 Run:
 
-bash
-Copy code
 uvicorn api_app:app --host 0.0.0.0 --port 8000
 Request Example:
 
@@ -214,7 +202,7 @@ curl -X POST "http://127.0.0.1:8000/predict" -F "file=@/path/to/image.jpg"
 Response Example:
 
 json
-Copy code
+
 {
   "prediction": "Pneumonia",
   "confidence": 85.4,
@@ -225,90 +213,36 @@ Copy code
     "Tuberculosis": 5.3
   }
 }
-📈 Accuracy Evaluation Code Example
-python
-Copy code
-from sklearn.metrics import classification_report, accuracy_score
-import torch
-from torchvision import datasets, transforms, models
-from torch.utils.data import DataLoader
-import torch.nn.functional as F
 
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-classes = ["Normal", "Pneumonia", "COVID-19", "Tuberculosis"]
+## ⚙️ Framework Overview
 
-transform = transforms.Compose([
-    transforms.Resize((224,224)),
-    transforms.ToTensor(),
-    transforms.Normalize([0.485,0.456,0.406],[0.229,0.224,0.225])
-])
+| Component | Description |
+|------------|-------------|
+| **Framework** | PyTorch |
+| **Explainability** | Grad-CAM |
+| **Interface** | Gradio |
 
-test_data = datasets.ImageFolder("dataset/test", transform=transform)
-test_loader = DataLoader(test_data, batch_size=16, shuffle=False)
+---
 
-model = models.resnet18()
-model.fc = torch.nn.Linear(model.fc.in_features, len(classes))
-model.load_state_dict(torch.load("models/best_model.pth", map_location=device))
-model = model.to(device)
-model.eval()
+## 🧱 Technologies Used
 
-y_true, y_pred = [], []
+- 🐍 **Python 3.12+**  
+- 🔥 **PyTorch**  
+- 🖼️ **Torchvision**  
+- 🌐 **Gradio**  
+- 🎥 **OpenCV**  
+- 📊 **Scikit-learn**  
+- ⚡ **FastAPI** *(optional for REST API support)*  
 
-with torch.no_grad():
-    for images, labels in test_loader:
-        images, labels = images.to(device), labels.to(device)
-        outputs = model(images)
-        _, preds = torch.max(F.softmax(outputs, dim=1), 1)
-        y_true.extend(labels.cpu().numpy())
-        y_pred.extend(preds.cpu().numpy())
+---
 
-print("\nAccuracy:", accuracy_score(y_true, y_pred))
-print("\nClassification Report:\n", classification_report(y_true, y_pred, target_names=classes))
-⚠️ Common Errors & Fixes
-Issue	Cause	Fix
-FileNotFoundError: best_model.pth	Model not uploaded or wrong path	Upload model to /content/ or update path
-FutureWarning: register_backward_hook	PyTorch hook deprecation	Replace with register_full_backward_hook
-Grad-CAM not showing colors	Image normalization or small gradients	Check preprocessing & learning rate
-Probabilities not summing to 1	Sigmoid used for multi-class	Use Softmax for multi-class output
+## 🧮 Example Gradio UI Screenshot
 
-🧾 Results Summary
-Metric	Value
-Accuracy	92.5%
-Precision	0.91
-Recall	0.92
-F1 Score	0.915
-Framework	PyTorch
-Explainability	Grad-CAM
-Interface	Gradio
+> 🖥️ Interactive web application showcasing disease prediction with Grad-CAM explainability.
 
-🧱 Technologies Used
-Python 3.12+
-
-PyTorch
-
-Torchvision
-
-Gradio
-
-OpenCV
-
-Scikit-learn
-
-FastAPI (optional)
-
-🧮 Example Gradio UI Screenshot
-Interactive web app with prediction & Grad-CAM heatmap
-
-🤖 How It Works
-The user uploads a medical image.
-
-The image is preprocessed and fed into a ResNet18 model.
-
-The model outputs probabilities for each disease class.
-
-Grad-CAM computes activation maps to visualize the decision focus.
-
-The final results (probabilities + heatmap) are displayed in the Gradio UI.
+*(You can add a screenshot here, for example:)*  
+```markdown
+![Gradio App Screenshot](assets/gradio_ui.png)
 
 
 
@@ -316,4 +250,5 @@ The final results (probabilities + heatmap) are displayed in the Gradio UI.
 
 
 
-Chat
+
+
