@@ -18,7 +18,7 @@ This project uses deep learning to classify medical images into multiple disease
 ---
 
 ## 📁 Project Structure
-give it in readme formta # 🧠 AI Powered Medical Image Analysis for Disease Detection
+# 🧠 AI Powered Medical Image Analysis for Disease Detection
 
 An AI-driven system that analyzes medical images (like X-rays or CT scans) and detects diseases such as **Pneumonia, COVID-19, and Tuberculosis**.  
 It uses **deep learning (ResNet18)**, **Grad-CAM explainability**, and a **Gradio web interface** for interactive and visual predictions.
