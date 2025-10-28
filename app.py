@@ -22,24 +22,20 @@ import cv2
 # -----------------------------
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-# -----------------------------
-# 🩺 Disease Classes
-# -----------------------------
-classes = ["Normal", "Pneumonia", "COVID-19", "Tuberculosis"]
+
 
 # -----------------------------
 # 🧠 Load Pre-trained Multi-Class Model (ResNet18)
 # -----------------------------
 model = models.resnet18(pretrained=False)
-model.fc = nn.Linear(model.fc.in_features, len(classes))
-model.load_state_dict(torch.load("models/best_model.pth", map_location=device))
+model.fc = nn.Linear(model.fc.in_features, 1)
+model.load_state_dict(torch.load("best_model.pth", map_location=device))
 model = model.to(device)
 model.eval()
 
 
-# -----------------------------
-# 🧩 Image Transformations
-# -----------------------------
+# Image transforms
+
 transform = transforms.Compose([
     transforms.Resize((224, 224)),
     transforms.ToTensor(),
@@ -48,9 +44,8 @@ transform = transforms.Compose([
 ])
 
 
-# -----------------------------
-# 🔍 Grad-CAM Hook Setup
-# -----------------------------
+# Grad-CAM Hook
+
 final_conv_layer = model.layer4[1].conv2
 activations = None
 gradients = None
@@ -66,23 +61,19 @@ def save_gradient(module, grad_input, grad_output):
 final_conv_layer.register_forward_hook(save_activation)
 final_conv_layer.register_backward_hook(save_gradient)
 
-
-# -----------------------------
-# 🎯 Grad-CAM Generator
-# -----------------------------
 def generate_gradcam(img_tensor, class_idx):
     global activations, gradients
-    activations, gradients = None, None
+    activations = None
+    gradients = None
 
-    # Forward
+    # Forward pass
     output = model(img_tensor)
-    probs = F.softmax(output, dim=1)
-    prob = probs[0, class_idx].item()
-
-    # Backward
+    prob = torch.sigmoid(output).item()
+    
+    # Backward pass for Grad-CAM
     model.zero_grad()
-    output[0, class_idx].backward()
-
+    output.backward(torch.ones_like(output))
+    
     # Compute Grad-CAM
     pooled_grads = torch.mean(gradients, dim=[0, 2, 3])
     for i in range(activations.shape[1]):
@@ -91,70 +82,43 @@ def generate_gradcam(img_tensor, class_idx):
     heatmap = np.maximum(heatmap.cpu(), 0)
     heatmap /= torch.max(heatmap)
 
-    # Resize and colorize
+    # Resize heatmap to original image size
     heatmap = cv2.resize(heatmap.numpy(), (224, 224))
     heatmap = np.uint8(255 * heatmap)
     heatmap = cv2.applyColorMap(heatmap, cv2.COLORMAP_JET)
     return heatmap, prob
 
 
-# -----------------------------
-# 🔮 Prediction + Grad-CAM Overlay
-# -----------------------------
-def analyze_medical_image(image):
+def predict_with_heatmap(image):
     try:
+        # Prepare input
         img_resized = image.resize((224, 224))
         img_tensor = transform(img_resized.convert("RGB")).unsqueeze(0).to(device)
 
-        # Forward pass
-        with torch.no_grad():
-            outputs = model(img_tensor)
-            probs = F.softmax(outputs, dim=1)[0].cpu().numpy()
+        # Generate Grad-CAM
+        heatmap, prob = generate_gradcam(img_tensor, class_idx=0)
 
-        pred_idx = np.argmax(probs)
-        pred_class = classes[pred_idx]
-
-        # Grad-CAM for top prediction
-        heatmap, _ = generate_gradcam(img_tensor, pred_idx)
+        # Overlay heatmap on original
         img_np = np.array(img_resized)
         overlay = cv2.addWeighted(img_np, 0.6, heatmap, 0.4, 0)
 
-        # Convert to dictionary
-        results = {cls: float(probs[i]) for i, cls in enumerate(classes)}
-
-        return results, overlay
-
+        return {"PNEUMONIA": prob, "NORMAL": 1 - prob}, overlay
     except Exception as e:
         return {"Error": str(e)}, None
 
 
-# -----------------------------
-# 🌐 Gradio Web Interface
-# -----------------------------
+
+
 interface = gr.Interface(
-    fn=analyze_medical_image,
-    inputs=gr.Image(type="pil", label="Upload X-ray or CT Image"),
+    fn=predict_with_heatmap,
+    inputs=gr.Image(type="pil"),
     outputs=[
-        gr.Label(num_top_classes=4, label="Predicted Disease Probabilities"),
-        gr.Image(type="numpy", label="Grad-CAM Heatmap Visualization")
+        gr.Label(num_top_classes=2),
+        gr.Image(type="numpy", label="Grad-CAM Heatmap")
     ],
-    title="🧠 AI Powered Medical Image Analysis",
-    description=(
-        "Upload an X-ray or CT scan image to detect diseases such as Normal, "
-        "Pneumonia, COVID-19, and Tuberculosis using a ResNet18 model. "
-        "A Grad-CAM heatmap highlights regions most influential in the model's prediction."
-    ),
-    examples=[
-        ["examples/normal.jpg"],
-        ["examples/pneumonia.jpg"],
-        ["examples/covid.jpg"],
-        ["examples/tuberculosis.jpg"]
-    ]
+    title="Pneumonia Detection with Grad-CAM (ResNet18)",
+    description="Upload a chest X-ray image. The model predicts pneumonia probability and shows a Grad-CAM heatmap highlighting important regions."
 )
 
-
-# -----------------------------
-# 🚀 Launch App
-# -----------------------------
 if __name__ == "__main__":
-    interface.launch(debug=True, share=True) 
+    interface.launch(debug=True, share=True)
